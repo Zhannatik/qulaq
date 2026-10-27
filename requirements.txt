@@ -1,0 +1,4 @@
+httpx>=0.28
+python-dotenv>=1.0
+mcp>=1.2,<2
+pytest>=8

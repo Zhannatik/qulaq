@@ -1,0 +1,26 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+
+# Real chats and voice notes must never be committed: use synthetic data only.
+data/
+private/
+exports/
+*.opus
+*.m4a
+*.ogg
+*.wav
+!tests/fixtures/*.wav
+
+# local outputs of test runs
+digest.md
+demo_digest.md
+transcripts.json
+demo_transcripts.json
+*.zip
+*.ics
+
+.idea/

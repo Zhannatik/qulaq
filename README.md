@@ -58,6 +58,25 @@ Needs `ffmpeg` on PATH. See `scripts/sample_texts.md` for the speech check.
 Real chats involve children and teachers. Nothing real is committed (`.gitignore`); the demo uses
 invented chats only.
 
+## What we found testing it
+
+Tested on synthetic school chats recorded by one speaker (about six voice notes in Russian, Kazakh and
+mixed speech). This is a small sample, not a benchmark.
+
+- **Russian** voice notes were transcribed very well.
+- **Kazakh** needs a language hint. With no hint the transcript came back as garbled Latin text; with
+  Kazakh+Russian hints it was mostly correct Cyrillic.
+- **Numbers are the weak spot.** "бес жүз" (500) came back as 300 or as 5 depending on the hint and the run.
+  This is why every voice note is read three ways and disagreements are shown with the original words.
+- **Results change between runs.** The same recording gave a correct "жұмаға дейін" (until Friday) in one
+  run and a garbled word, so no date, in another. Qulaq shows "no date" or ⚠️ instead of guessing.
+- **Bugs that testing found in our own code:** a payment mentioned without an amount was silently lost
+  (now a flagged item); a doubtful date was "confirmed" by an unrelated message (removed); one disputed
+  date flagged unrelated items in the same voice note (comparison is now per item); two events on the same
+  day were merged and one disappeared (events with different times now stay separate).
+- **Known gaps:** the forward-to-WhatsApp path is not built; spoken amounts are interpreted by the model,
+  not by code; we have not tested real chats, only invented ones.
+
 ## Related work
 
 Other WhatsApp chat summarizers exist (text-focused GitHub summarizers, ChatBrief, ThreadRecap,

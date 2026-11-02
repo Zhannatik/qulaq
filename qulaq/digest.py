@@ -13,7 +13,7 @@ _WEEKDAYS = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"]
 
 def _when(ev: Event, today: date) -> str:
     if not ev.date:
-        return "без даты"
+        return f"без даты, {ev.time}" if ev.time else "без даты"
     d = days_until(ev, today)
     rel = {0: "сегодня", 1: "завтра"}.get(d, "")
     base = f"{ev.date:%d.%m} ({_WEEKDAYS[ev.date.weekday()]})"

@@ -210,3 +210,34 @@ def test_voice_payment_always_shows_quote():
 def test_extra_bias_depends_on_language():
     assert pipeline._extra_bias("ертең концерт") == ("Kazakh",)
     assert pipeline._extra_bias("завтра концерт") == ("Russian",)
+
+
+def test_cross_check_flags_only_the_item_that_disagrees():
+    meeting = Event(kind="event", title="Собрание", date=date(2026, 11, 5), time="18:00")
+    pay = Event(kind="payment", title="Стенгазета", amount_kzt=500, date=date(2026, 11, 6))
+    alt = [Event(kind="event", title="Собрание", date=date(2026, 11, 6), time="18:00"),
+           Event(kind="payment", title="Стенгазета", amount_kzt=500, date=date(2026, 11, 6))]
+    extract.cross_check([meeting, pay], alt)
+    assert meeting.uncertain and not pay.uncertain
+    assert len(meeting.notes) == 1
+
+
+def test_time_shown_even_without_date():
+    ev = Event(kind="event", title="Фото класса", time="18:30")
+    assert "18:30" in digest.build_digest(rules.apply([ev]), date(2026, 11, 1))
+
+
+def test_two_timed_events_same_day_are_not_merged():
+    evs = rules.apply([
+        Event(kind="event", title="Родительское собрание", date=date(2026, 11, 5), time="18:00"),
+        Event(kind="event", title="Фото класса", date=date(2026, 11, 5), time="18:30"),
+    ])
+    assert len(rules.dedupe(evs)) == 2
+
+
+def test_same_event_with_and_without_time_still_merges():
+    evs = rules.apply([
+        Event(kind="event", title="Концерт", date=date(2026, 11, 6)),
+        Event(kind="event", title="Концерт в актовом зале", date=date(2026, 11, 6), time="15:00"),
+    ])
+    assert len(rules.dedupe(evs)) == 1

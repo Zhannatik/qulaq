@@ -22,5 +22,4 @@ transcripts.json
 demo_transcripts.json
 *.zip
 *.ics
-
 .idea/

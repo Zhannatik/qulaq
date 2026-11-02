@@ -133,37 +133,39 @@ def extract_events(
 def cross_check(primary: list[Event], alt: list[Event]) -> None:
     """Compare two readings of the same voice note (different language hints).
 
-    If amounts, dates or times disagree, mark the primary events as uncertain and
-    show both values. The code does not decide which one is right.
+    Each event is compared only with events of the same kind in the other reading, so a
+    disagreement about the meeting date no longer flags the unrelated payment in the same
+    note. If amount, date or time disagree, the event is marked uncertain and both values
+    are shown. The code does not decide which one is right.
     """
-    def values(events: list[Event], attr: str) -> set:
-        return {getattr(e, attr) for e in events if getattr(e, attr) is not None}
-
     labels = {"amount_kzt": "сумма", "date": "дата", "time": "время"}
-    for attr, label in labels.items():
-        a, b = values(primary, attr), values(alt, attr)
-        if not a and b and attr == "amount_kzt":
-            # a payment whose amount was heard in only one of the two readings
-            for e in primary:
-                if e.kind == "payment" and e.amount_kzt is None:
+    for e in primary:
+        same_kind = [c for c in alt if c.kind == e.kind]
+        others = [o for o in primary if o is not e and o.kind == e.kind]
+        for attr, label in labels.items():
+            mine = getattr(e, attr)
+            theirs = {getattr(c, attr) for c in same_kind if getattr(c, attr) is not None}
+            if mine is None:
+                if attr == "amount_kzt" and e.kind == "payment" and theirs:
                     e.uncertain = True
-                    e.amount_options = sorted(b, reverse=True)
-                    e.notes.append(f"сумма: услышана только во второй расшифровке ({_fmt(b)})")
-            continue
-        if not a:
-            continue
-        if b and a != b:
-            note = f"{label}: в двух расшифровках разные значения ({_fmt(a)} или {_fmt(b)})"
-        elif not b and alt:
-            note = f"{label}: во второй расшифровке не найдено"
-        else:
-            continue
-        for e in primary:
-            if getattr(e, attr) is not None:
-                e.uncertain = True
+                    e.amount_options = sorted(set(e.amount_options) | theirs, reverse=True)
+                    e.notes.append(f"сумма: услышана только в другой расшифровке ({_fmt(theirs)})")
+                continue
+            if mine in theirs:
+                continue
+            explained = {getattr(o, attr) for o in others}      # values that belong to other items
+            extra = theirs - explained
+            if extra:
+                note = f"{label}: в другой расшифровке иначе ({_fmt(extra)}; здесь {mine})"
+            elif alt:
+                note = f"{label}: в другой расшифровке не найдено"
+            else:
+                continue
+            e.uncertain = True
+            if note not in e.notes:
                 e.notes.append(note)
-                if attr == "amount_kzt" and b:
-                    e.amount_options = sorted(set(e.amount_options) | a | b, reverse=True)
+            if attr == "amount_kzt" and extra:
+                e.amount_options = sorted(set(e.amount_options) | extra | {mine}, reverse=True)
 
 
 def _fmt(values_: set) -> str:

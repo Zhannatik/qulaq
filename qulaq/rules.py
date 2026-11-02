@@ -81,9 +81,27 @@ def _merge(group: list[Event]) -> Event:
     return merged
 
 
+def _split_by_time(group: list[Event]) -> list[list[Event]]:
+    """Two events on one day with different clock times are two events (meeting 18:00, photo 18:30)."""
+    clusters: list[list[Event]] = []
+    for ev in group:
+        for cl in clusters:
+            times = {e.time for e in cl if e.time} | ({ev.time} if ev.time else set())
+            if len(times) <= 1:
+                cl.append(ev)
+                break
+        else:
+            clusters.append([ev])
+    return clusters
+
+
 def dedupe(events: list[Event]) -> list[Event]:
     """Merge repeats of the same thing (a teacher posts it, then reminds in a voice note)."""
     groups: dict[tuple, list[Event]] = {}
     for ev in sorted(events, key=lambda e: e.sent_at or datetime.min):
         groups.setdefault(_key(ev), []).append(ev)
-    return [g[0] if len(g) == 1 else _merge(g) for g in groups.values()]
+    out: list[Event] = []
+    for g in groups.values():
+        for cl in _split_by_time(g):
+            out.append(cl[0] if len(cl) == 1 else _merge(cl))
+    return out

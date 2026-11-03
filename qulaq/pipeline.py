@@ -10,7 +10,7 @@ from typing import Callable
 
 import httpx
 
-from . import asr, export_parser, extract, rules
+from . import asr, export_parser, extract, llm, rules
 from .config import Settings
 from .events import Event
 
@@ -36,6 +36,22 @@ _KAZAKH_LETTERS = set("әғқңөұүһі")
 def _extra_bias(text: str) -> tuple[str, ...]:
     """Third reading: a single-language hint, chosen by what the first reading looks like."""
     return ("Kazakh",) if _KAZAKH_LETTERS & set(text.lower()) else ("Russian",)
+
+
+def _safe_extract(text, msg, attachment, result, client, settings):
+    """Extract events; a reply the model could not turn into JSON must not stop the whole run.
+
+    Returns [] and records the problem when `result` is given (main reading), or None when it is
+    only an extra reading used for cross-checking.
+    """
+    try:
+        return extract.extract_events(text, sender=msg.sender, sent_at=msg.ts,
+                                      attachment=attachment, client=client, settings=settings)
+    except llm.LLMError as exc:
+        if result is None:
+            return None
+        result.failed.append(f"{attachment or 'text message'} ({msg.ts:%d.%m %H:%M}): {exc}")
+        return []
 
 
 def default_transcriber(settings: Settings | None = None, client: httpx.Client | None = None) -> Transcriber:
@@ -88,25 +104,20 @@ def process_export(
                     result.transcripts.append({"file": msg.attachment, "sent_at": msg.ts.isoformat(),
                                                "with_hint": main_text, "without_hint": alt_text,
                                                "third_pass": third_text})
-                    main_ev = extract.extract_events(
-                        main_text, sender=msg.sender, sent_at=msg.ts,
-                        attachment=msg.attachment, client=client, settings=settings)
+                    main_ev = _safe_extract(main_text, msg, msg.attachment, result, client, settings)
                     if cross_check:
                         for other in (alt_text, third_text):
                             if other:
-                                other_ev = extract.extract_events(
-                                    other, sender=msg.sender, sent_at=msg.ts,
-                                    attachment=msg.attachment, client=client, settings=settings)
-                                extract.cross_check(main_ev, other_ev)
+                                other_ev = _safe_extract(other, msg, msg.attachment, None, client, settings)
+                                if other_ev is not None:   # an unusable extra reading is skipped, not fatal
+                                    extract.cross_check(main_ev, other_ev)
                     main_ev = extract.money_safety_net(
                         [main_text, alt_text, third_text], main_ev,
                         sender=msg.sender, sent_at=msg.ts, attachment=msg.attachment)
                     result.events += main_ev
 
             for text, att in texts:
-                result.events += extract.extract_events(
-                    text, sender=msg.sender, sent_at=msg.ts, attachment=att,
-                    client=client, settings=settings)
+                result.events += _safe_extract(text, msg, att, result, client, settings) or []
 
     result.events = rules.dedupe(rules.apply(result.events))
     return result

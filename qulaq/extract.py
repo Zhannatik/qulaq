@@ -122,12 +122,16 @@ def extract_events(
         return []
     weekday = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][sent_at.weekday()]
     user = f"Message date: {sent_at:%Y-%m-%d} ({weekday}), time {sent_at:%H:%M}\nSender: {sender}\n\nMessage:\n{text}"
-    reply = llm.chat(
-        [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
-        client=client,
-        settings=settings,
-    )
-    return parse_items(llm.parse_json_object(reply), sender=sender, sent_at=sent_at, attachment=attachment)
+    messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+    for attempt in (1, 2):   # the model sometimes answers a garbled transcript with chatter, not JSON
+        reply = llm.chat(messages, client=client, settings=settings)
+        try:
+            payload = llm.parse_json_object(reply)
+            break
+        except llm.LLMError:
+            if attempt == 2:
+                raise
+    return parse_items(payload, sender=sender, sent_at=sent_at, attachment=attachment)
 
 
 def cross_check(primary: list[Event], alt: list[Event]) -> None:

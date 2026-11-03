@@ -241,3 +241,22 @@ def test_same_event_with_and_without_time_still_merges():
         Event(kind="event", title="Концерт в актовом зале", date=date(2026, 11, 6), time="15:00"),
     ])
     assert len(rules.dedupe(evs)) == 1
+
+
+def test_unusable_model_reply_does_not_stop_the_run(tmp_path, monkeypatch):
+    """Regression: a garbled extra reading made the model answer with chatter and crashed the run."""
+    z = tmp_path / "c.zip"
+    with zipfile.ZipFile(z, "w") as zf:
+        zf.writestr("_chat.txt", CHAT)
+        zf.writestr("PTT-1.opus", b"x")
+    spoken = {(): "ыыы мусор", ("Kazakh", "Russian"): "собрать по пятьсот тенге", ("Russian",): "собрать по пятьсот тенге"}
+
+    def fake_chat(messages, **kw):
+        if "мусор" in messages[-1]["content"]:
+            return "Извините, не могу разобрать это сообщение."
+        return '{"items": [{"kind": "payment", "title": "Шторы", "amount_kzt": 500}]}'
+
+    monkeypatch.setattr(extract.llm, "chat", fake_chat)
+    res = pipeline.process_export(z, transcribe=lambda p, b: spoken[tuple(b)], settings=S)
+    pay = next(e for e in res.events if e.kind == "payment")
+    assert pay.amount_kzt == 500 and not res.failed

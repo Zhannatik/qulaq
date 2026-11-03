@@ -4,7 +4,7 @@ An agent for parents in Kazakhstan whose school and kindergarten live in WhatsAp
 It listens to the voice notes you missed, pulls out dates, deadlines, money and things to bring,
 and gives you a short "don't miss this" report in the evening or once a week.
 
-Status: work in progress for the Meta Global AI Developer Hackathon (Indie Developer track).
+Status: Submitted to the Meta Global AI Developer Hackathon (Indie Developer track).
 
 ## Two ways in (no unofficial WhatsApp access)
 

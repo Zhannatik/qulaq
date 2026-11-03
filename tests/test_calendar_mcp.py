@@ -78,3 +78,9 @@ def test_mcp_tools_registered_and_work_on_loaded_events(tmp_path):
     assert out["not_exported"][0]["title"] == "Стенгазета"
     assert (tmp_path / "x.ics").exists()
     assert "пересекаются" not in mcp_server.check_conflicts()
+
+
+def test_items_to_bring_do_not_clash_with_events():
+    meeting = Event(kind="event", title="Собрание", date=date(2026, 11, 5), time="18:00")
+    uniform = Event(kind="bring", title="Школьная форма", date=date(2026, 11, 5), time="18:30")
+    assert conflicts.find_conflicts([meeting, uniform]) == []

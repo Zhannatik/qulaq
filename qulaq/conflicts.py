@@ -18,7 +18,8 @@ class Conflict:
 
 
 def _span(ev: Event) -> tuple[datetime, datetime] | None:
-    if not ev.date or not ev.time:
+    # only real events take up time; "bring a white shirt" or "hand in money" do not clash with a meeting
+    if ev.kind != "event" or not ev.date or not ev.time:
         return None
     h, m = (int(x) for x in ev.time.split(":"))
     start = datetime(ev.date.year, ev.date.month, ev.date.day, h, m)

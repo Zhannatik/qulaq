@@ -88,6 +88,9 @@ Kazakh/Russian school groups and on deadlines and actions rather than a generic 
 All code in this repository was written during the hackathon period (Oct 27 – Nov 4, 2026). The idea
 grew out of an earlier project (School Bridge); no code from it is reused.
 
+##Demo
+https://youtu.be/R85CqYKlhLo
+
 ## License
 
 MIT
